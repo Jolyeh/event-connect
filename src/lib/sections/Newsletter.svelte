@@ -1,5 +1,7 @@
 <script>
     import { apiUrl } from "$lib/utils/api_url";
+    import { reveal } from "$lib/actions/reveal";
+    import { toast } from "svelte-sonner";
     import { CheckCircle, Send } from "lucide-svelte";
 
     let email;
@@ -36,17 +38,20 @@
 <section class="py-20 lg:py-32 bg-base-100">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div
+            use:reveal
             class="relative card bg-base-200 border border-primary/12 overflow-hidden"
         >
             <div
                 class="card-body items-center text-center py-16 lg:py-24 px-6 lg:px-20 relative z-10"
             >
                 <p
+                    use:reveal={{ delay: 40 }}
                     class="text-[10px] uppercase tracking-[0.28em] text-primary font-semibold mb-3"
                 >
                     Ne rien manquer
                 </p>
                 <h2
+                    use:reveal={{ delay: 120 }}
                     class="font-display font-bold text-base-content leading-tight mb-4"
                     style="font-size: clamp(2rem, 5vw, 3.5rem)"
                 >
@@ -55,13 +60,14 @@
                     >
                 </h2>
                 <p
+                    use:reveal={{ delay: 200 }}
                     class="text-sm text-base-content/45 leading-relaxed max-w-sm mb-10"
                 >
                     Recevez une sélection personnalisée des meilleurs événements
                     chaque semaine.
                 </p>
 
-                <form class="w-full max-w-md">
+                <form class="w-full max-w-md" use:reveal={{ delay: 280 }}>
                     {#if status}
                         <div
                             class="flex items-center justify-center gap-3 bg-primary/10 border border-primary/25 rounded-2xl px-6 py-4 w-full"
@@ -105,6 +111,7 @@
                     <p class="text-error text-sm mt-3">{error}</p>
                 {/if}
                 <p
+                    use:reveal={{ delay: 360 }}
                     class="text-[10px] uppercase tracking-[0.18em] text-base-content/18 mt-4"
                 >
                     Pas de spam · Désinscription en 1 clic

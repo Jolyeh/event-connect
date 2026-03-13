@@ -1,5 +1,6 @@
 <script>
   import { appName } from "$lib";
+  import { reveal } from "$lib/actions/reveal";
   import {
     Zap,
     Instagram,
@@ -41,7 +42,7 @@
 <footer class="bg-base-200 border-t border-primary/8">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="py-16 grid grid-cols-2 lg:grid-cols-5 gap-10">
-      <div class="col-span-2">
+      <div class="col-span-2" use:reveal>
         <a href="/" class="flex items-center gap-2.5 mb-5 group w-fit">
           <div
             class="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/30 group-hover:scale-105 transition-transform duration-200"
@@ -74,8 +75,8 @@
         </div>
       </div>
 
-      {#each Object.entries(footerLinks) as [title, items]}
-        <div>
+      {#each Object.entries(footerLinks) as [title, items], i}
+        <div use:reveal={{ delay: 120 + i * 100 }}>
           <h4
             class="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary/75 mb-4"
           >
@@ -102,6 +103,7 @@
     </div>
 
     <div
+      use:reveal={{ delay: 120 }}
       class="py-6 border-t border-primary/6 flex flex-col sm:flex-row items-center justify-between gap-3"
     >
       <p class="text-xs text-base-content/20">

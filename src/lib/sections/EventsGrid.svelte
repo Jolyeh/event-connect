@@ -1,6 +1,7 @@
 <script>
-  import { fly, fade } from "svelte/transition";
+  import { fade } from "svelte/transition";
   import { ArrowRight, Search } from "lucide-svelte";
+  import { reveal } from "$lib/actions/reveal";
   import EventCard from "$lib/components/EventCard.svelte";
   import FeaturedEventCard from "$lib/components/FeaturedEventCard.svelte";
   import { apiUrl } from "$lib/utils/api_url";
@@ -51,7 +52,7 @@
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
     <!-- Header -->
-    <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-12">
+    <div use:reveal class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-12">
       <div>
         <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-primary mb-2">Programme</p>
         <h2 class="font-bold text-base-content leading-tight" style="font-size: clamp(1.8rem, 3vw, 2.6rem)">
@@ -65,13 +66,13 @@
 
     <!-- Featured card -->
     {#if featured && activeCategory === "Tous" && !loading}
-      <div class="mb-10" in:fly={{ y: 20, duration: 400 }}>
+      <div class="mb-10" use:reveal>
         <FeaturedEventCard event={featured} />
       </div>
     {/if}
 
     <!-- Filtres catégories -->
-    <div class="flex flex-wrap gap-2 mb-8">
+    <div class="flex flex-wrap gap-2 mb-8" use:reveal={{ delay: 80 }}>
       {#if loading}
         {#each Array(5) as _}
           <div class="skeleton h-8 w-20 rounded-full"></div>
@@ -94,23 +95,21 @@
 
     <!-- Grille -->
     {#key activeCategory}
-      <div
-        in:fly={{ y: 12, duration: 300 }}
-        out:fade={{ duration: 150 }}
-        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
-      >
+      <div out:fade={{ duration: 150 }} class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {#if loading}
           {#each Array(6) as _}
             <div class="skeleton h-72 rounded-2xl"></div>
           {/each}
 
         {:else if filtered.length > 0}
-          {#each filtered as event (event.id)}
-            <EventCard {event} />
+          {#each filtered as event, i (event.id)}
+            <div use:reveal={{ delay: i * 90 }}>
+              <EventCard {event} />
+            </div>
           {/each}
 
         {:else}
-          <div class="col-span-full flex flex-col items-center gap-3 py-16 text-center">
+          <div class="col-span-full flex flex-col items-center gap-3 py-16 text-center" use:reveal>
             <Search size={32} class="text-base-content/15" />
             <p class="text-base-content/35 text-sm">Aucun événement dans cette catégorie pour le moment.</p>
             <button
@@ -127,7 +126,7 @@
 
     <!-- CTA -->
     {#if !loading && filtered.length > 0}
-      <div class="flex justify-center mt-12">
+      <div class="flex justify-center mt-12" use:reveal={{ delay: 120 }}>
         <a href="/event" class="btn btn-outline btn-primary rounded-full gap-2 text-xs uppercase tracking-widest px-10">
           Voir plus d'événements <ArrowRight size={14} />
         </a>

@@ -5,12 +5,12 @@ import fs from "fs";
 
 export default defineConfig({
 	plugins: [sveltekit(), tailwindcss()],
-	preview: {
+	/* preview: {
 		https: {
 			key: fs.readFileSync("cert.key"),
 			cert: fs.readFileSync("cert.crt"),
 		},
 		host: "0.0.0.0",
 		port: 4173,
-	}
+	} */
 });

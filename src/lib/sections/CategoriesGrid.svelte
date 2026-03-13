@@ -1,6 +1,6 @@
 <script>
-  import { fly } from "svelte/transition";
   import { ArrowUpRight } from "lucide-svelte";
+  import { reveal } from "$lib/actions/reveal";
   import { apiUrl, imageUrl } from "$lib/utils/api_url";
 
   /** @type {Array} */
@@ -29,7 +29,7 @@
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
     <!-- Header -->
-    <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-12 lg:mb-16">
+    <div use:reveal class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-12 lg:mb-16">
       <div>
         <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-primary mb-2">Explorer</p>
         <h2 class="font-bold text-base-content leading-tight" style="font-size: clamp(1.8rem, 3vw, 2.6rem)">
@@ -50,7 +50,7 @@
       {#each categories as cat, i (cat.id ?? cat.slug)}
         <a
           href={`event/categories/${cat.slug}`}
-          in:fly={{ y: 16, duration: 500, delay: i * 80 }}
+          use:reveal={{ delay: i * 100 }}
           class="group relative rounded-2xl overflow-hidden cursor-pointer
                  hover:scale-[1.02] transition-transform duration-300
                  {i === 0 ? 'col-span-2 row-span-2 h-[340px] lg:h-[380px]' : 'col-span-1 h-40 lg:h-[180px]'}"

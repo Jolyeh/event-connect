@@ -1,3 +1,7 @@
+<script>
+    import { reveal } from "$lib/actions/reveal";
+</script>
+
 <section
     class="relative min-h-screen flex flex-col justify-center overflow-hidden pt-20"
 >
@@ -34,7 +38,7 @@
     >
         <div>
             <!-- Badge -->
-            <div class="mb-7">
+            <div class="mb-7" use:reveal={{ delay: 0 }}>
                 <span
                     class="inline-flex items-center gap-2 border border-primary/25 bg-primary/8 text-primary text-[10px] font-semibold uppercase tracking-[0.22em] py-2 px-4 rounded-full"
                 >
@@ -48,12 +52,14 @@
             <!-- Headline -->
             <div class="mb-8">
                 <h1
+                    use:reveal={{ delay: 120 }}
                     class="font-display font-bold leading-[0.9] text-base-content mb-2"
                     style="font-size: clamp(3rem, 10vw, 5.5rem);"
                 >
                     Vivez l'instant
                 </h1>
                 <h1
+                    use:reveal={{ delay: 220 }}
                     class="font-display font-light italic leading-[0.9] text-primary"
                     style="font-size: clamp(3rem, 10vw, 5.5rem);"
                 >
@@ -63,6 +69,7 @@
 
             <!-- Subtext -->
             <p
+                use:reveal={{ delay: 320 }}
                 class="text-base-content/45 text-base lg:text-lg leading-relaxed max-w-lg mb-10"
             >
                 Des milliers d'événements soigneusement sélectionnés — concerts,
@@ -74,6 +81,7 @@
 
     <!-- Scroll cue -->
     <div
+        use:reveal={{ delay: 420 }}
         class="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-none"
     >
         <span
