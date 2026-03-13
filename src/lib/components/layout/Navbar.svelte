@@ -1,7 +1,7 @@
 <script>
   import { onMount } from "svelte";
   import { fly, slide, fade } from "svelte/transition";
-  import { Menu, X, Zap, Search} from "lucide-svelte";
+  import { Menu, X, Zap, LogOut, User } from "lucide-svelte";
   import { appName } from "$lib";
   import { page } from "$app/stores";
   import { apiUrl } from "$lib/utils/api_url";
@@ -29,6 +29,11 @@
       : isLoggedIn
         ? "Mon compte"
         : "Connexion";
+
+  // Ferme automatiquement le menu lors du changement de page
+  $: if (currentPath) {
+    open = false;
+  }
 
   const handleLogout = async () => {
     open = false;
@@ -86,9 +91,7 @@
         >
           <Zap size={18} class="text-primary-content" fill="currentColor" />
         </div>
-        <span
-          class="font-display text-2xl font-bold tracking-wide text-primary"
-        >
+        <span class="font-display text-2xl font-bold tracking-wide text-primary">
           {appName}
         </span>
       </a>
@@ -109,7 +112,6 @@
       </nav>
 
       <div class="flex items-center gap-2">
-
         {#if isLoggedIn && isOnProfile}
           <button
             type="button"
@@ -159,7 +161,7 @@
     <div
       in:slide={{ duration: 250 }}
       out:slide={{ duration: 220 }}
-      class="lg:hidden bg-base-200/98 backdrop-blur-2xl border-t border-primary/10 overflow-hidden"
+      class="absolute top-full left-0 w-full lg:hidden bg-base-200/98 backdrop-blur-2xl border-t border-primary/10 overflow-hidden shadow-xl"
     >
       <div class="max-w-7xl mx-auto px-4 py-6 flex flex-col gap-1">
         {#each links as link, index}
@@ -185,10 +187,7 @@
           </div>
         {/each}
 
-        <div
-          class="pt-6 border-t border-base-content/5 flex flex-col gap-3 mt-4"
-        >
-
+        <div class="pt-6 border-t border-base-content/5 flex flex-col gap-3 mt-4">
           {#if isLoggedIn && isOnProfile}
             <button
               type="button"

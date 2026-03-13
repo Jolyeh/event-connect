@@ -21,7 +21,13 @@
       if (json.status) {
         const ev = json.data;
         const tickets = ev.tickets ?? [];
-        const totalSold = tickets.reduce((s, t) => s + (t.sold ?? 0), 0);
+        let totalSold = 0;
+        if (ev.isFree) {
+          const bookings = ev.bookings;
+          totalSold = bookings.length;
+        } else {
+          totalSold = tickets.reduce((s, t) => s + (t.sold ?? 0), 0);
+        }
         const totalRevenue = tickets.reduce(
           (s, t) => s + (t.sold ?? 0) * (t.price ?? 0),
           0,
@@ -48,7 +54,7 @@
 
   function formatPrice(c) {
     if (!c) return "0 F";
-    return `${(c / 100).toLocaleString("fr-FR")} F`;
+    return `${c.toLocaleString("fr-FR")} F`;
   }
   function close() {
     dispatch("close");
@@ -128,7 +134,7 @@
               </div>
               <p
                 class="font-black text-primary {kpi.sm
-                  ? 'text-xs'
+                  ? 'text-lg'
                   : 'text-lg'} leading-tight"
               >
                 {kpi.value}

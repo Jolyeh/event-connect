@@ -12,6 +12,7 @@
         Plus,
         Wifi,
         AlertCircle,
+        ExternalLink,
     } from "lucide-svelte";
     import { page } from "$app/stores";
     import { imageUrl, apiUrl } from "$lib/utils/api_url";
@@ -24,21 +25,18 @@
 
     const dispatch = createEventDispatcher();
 
-    // ── State ────────────────────────────────────────────────────────────────
-    /** @type {object|null} */
     let event = null;
     let loading = true;
     let error = "";
-
     let selection = {};
     let userName = "";
     let userEmail = "";
     let userPhone = "";
-    let status = "idle"; // idle | loading | success | error
+    let status = "idle"; // idle | loading | redirecting | success | error
     let message = "";
-    let reference = null;
+    let paymentUrl = null;
+    let booking = null;
 
-    // ── Fetch event ──────────────────────────────────────────────────────────
     async function fetchEvent(id) {
         loading = true;
         error = "";
@@ -49,7 +47,6 @@
             const json = await res.json();
             if (!json.status)
                 throw new Error(json.message || "Événement introuvable");
-
             const raw = json.data;
             event = {
                 id: raw.id,
@@ -69,7 +66,7 @@
                     id: t.id,
                     name: t.name,
                     description: t.description ?? null,
-                    price: t.price, // centimes
+                    price: t.price,
                     available: (t.quantity ?? 0) - (t.sold ?? 0),
                 })),
             };
@@ -80,16 +77,12 @@
         }
     }
 
-    onMount(() => {
-        fetchEvent(eventId);
-    });
+    onMount(() => fetchEvent(eventId));
 
-    // Pré-sélection après chargement
     $: if (event && preselectedTicket && Object.keys(selection).length === 0) {
         selection = { [preselectedTicket]: Math.max(1, preselectedQty || 1) };
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
     function formatDate(iso) {
         if (!iso) return "Date à confirmer";
         return new Date(iso).toLocaleDateString("fr-FR", {
@@ -98,41 +91,33 @@
             year: "numeric",
         });
     }
-
     function formatPrice(centimes) {
         if (!centimes || centimes === 0) return "Gratuit";
-        return `${(centimes / 100).toLocaleString("fr-FR", { minimumFractionDigits: 0 })} FCFA`;
+        return `${centimes.toLocaleString("fr-FR")} FCFA`;
     }
-
     function updateQty(ticketId, value) {
         const clamped = Math.max(0, Math.min(8, value));
         selection = { ...selection, [ticketId]: clamped };
     }
 
-    // ── Calculs réactifs ─────────────────────────────────────────────────────
     $: items = event
         ? event.tickets
-              .map((ticket) => ({
-                  ticket,
-                  quantity: selection[ticket.id] || 0,
-              }))
-              .filter((item) => item.quantity > 0)
+              .map((t) => ({ ticket: t, quantity: selection[t.id] || 0 }))
+              .filter((i) => i.quantity > 0)
         : [];
+    $: subtotal = items.reduce((s, i) => s + i.ticket.price * i.quantity, 0);
+    $: total = subtotal; // sans frais de service
 
-    $: subtotal = items.reduce(
-        (sum, item) => sum + item.ticket.price * item.quantity,
-        0,
-    );
-    $: fee = Math.round(subtotal * 0.03);
-    $: total = subtotal + fee;
-
-    // ── Soumission ───────────────────────────────────────────────────────────
     async function handleSubmit() {
-        if (!event || !items.length) {
+        // ── Vérification billets uniquement si événement payant ──
+        if (!event) return;
+
+        if (!event.isFree && items.length === 0) {
             status = "error";
             message = "Sélectionnez au moins un billet.";
             return;
         }
+
         if (!userName.trim() || !userEmail.trim() || !userPhone.trim()) {
             status = "error";
             message = "Renseignez votre nom, e-mail et téléphone.";
@@ -142,27 +127,55 @@
         status = "loading";
         message = "";
 
-        // TODO: remplacer par appel API réel
-        await new Promise((r) => setTimeout(r, 700));
+        try {
+            const res = await fetch(`${apiUrl}/bookings`, {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    eventId,
+                    userName: userName.trim(),
+                    userEmail: userEmail.trim(),
+                    userPhone: userPhone.trim(),
+                    isFree: event.isFree,
+                    items: items.map((i) => ({
+                        ticketId: i.ticket.id,
+                        quantity: i.quantity,
+                    })),
+                }),
+            });
+            const json = await res.json();
 
-        reference = `EVB-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-        status = "success";
+            if (!json.status) {
+                status = "error";
+                message = json.message ?? "Une erreur est survenue.";
+                return;
+            }
 
-        dispatch("submit", {
-            reference,
-            eventId: event.id,
-            userName,
-            userEmail,
-            userPhone,
-            items: items.map((i) => ({
-                ticketId: i.ticket.id,
-                quantity: i.quantity,
-            })),
-        });
+            booking = json.data.booking;
+            paymentUrl = json.data.paymentUrl;
+
+            // Événement gratuit → confirmation directe
+            if (!paymentUrl) {
+                window.location.href = `/event/booking/confirmation?ref=${booking.reference}&bookingId=${booking.id}`;
+                return;
+            }
+
+            // Événement payant → FedaPay
+            status = "redirecting";
+            dispatch("submit", { booking, paymentUrl });
+            setTimeout(() => {
+                window.location.href = paymentUrl;
+            }, 1500);
+        } catch {
+            status = "error";
+            message = "Impossible de contacter le serveur. Réessayez.";
+        }
     }
 </script>
 
 <Navbar />
+
 {#if loading}
     <div
         class="min-h-screen bg-base-100 pt-24 flex items-center justify-center"
@@ -176,70 +189,70 @@
         <p class="text-base-content/40 text-sm text-center">{error}</p>
         <button
             on:click={() => fetchEvent(eventId)}
-            class="btn btn-primary btn-sm rounded-full"
+            class="btn btn-primary btn-sm rounded-full">Réessayer</button
         >
-            Réessayer
-        </button>
     </div>
-{:else if status === "success"}
+
+    <!-- ── Redirection en cours ────────────────────────────────────────────────── -->
+{:else if status === "redirecting"}
     <div
         class="min-h-screen bg-base-100 pt-24 px-4 flex items-center justify-center"
     >
         <div
-            class="max-w-lg w-full card bg-base-200 border border-primary/15 overflow-hidden"
+            class="max-w-md w-full card bg-base-200 border border-primary/15 overflow-hidden text-center"
         >
-            <!-- Bande de couleur haut -->
             <div class="h-1.5 w-full bg-primary"></div>
-            <div class="card-body items-center text-center py-14 gap-5">
+            <div class="card-body items-center py-12 gap-5">
                 <div
                     class="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center"
                 >
-                    <CheckCircle2 size={32} class="text-primary" />
+                    <span
+                        class="loading loading-spinner loading-md text-primary"
+                    ></span>
                 </div>
                 <div>
-                    <h1 class="font-bold text-2xl text-base-content mb-2">
-                        Participation confirmée !
-                    </h1>
+                    <h2 class="font-bold text-xl text-base-content mb-2">
+                        Redirection vers le paiement…
+                    </h2>
                     <p
-                        class="text-sm text-base-content/45 leading-relaxed max-w-sm"
+                        class="text-sm text-base-content/40 leading-relaxed max-w-sm"
                     >
-                        Votre participation a bien été enregistrée. Vous
-                        recevrez une confirmation par e-mail.
+                        Vous allez être redirigé vers FedaPay pour finaliser
+                        votre paiement.
                     </p>
                 </div>
-                {#if reference}
+                {#if booking}
                     <div
-                        class="bg-base-300 border border-primary/15 rounded-xl px-6 py-3"
+                        class="bg-base-300 border border-primary/15 rounded-xl px-5 py-2.5"
                     >
                         <p
-                            class="text-[10px] uppercase tracking-widest text-base-content/30 mb-1"
+                            class="text-[10px] uppercase tracking-widest text-base-content/30 mb-0.5"
                         >
                             Référence
                         </p>
                         <p
-                            class="font-mono font-bold text-primary text-lg tracking-wider"
+                            class="font-mono font-bold text-primary tracking-wider"
                         >
-                            {reference}
+                            {booking.reference}
                         </p>
                     </div>
                 {/if}
-                <button
-                    on:click={() => window.history.back()}
-                    class="btn btn-ghost btn-sm rounded-full gap-2 text-xs uppercase tracking-wider mt-2"
-                >
-                    <ArrowLeft size={13} />
-                    Retour à l'événement
-                </button>
+                {#if paymentUrl}
+                    <a
+                        href={paymentUrl}
+                        class="btn btn-primary btn-sm rounded-full gap-1.5 text-xs uppercase tracking-wider"
+                    >
+                        <ExternalLink size={12} /> Cliquez ici si la redirection
+                        ne démarre pas
+                    </a>
+                {/if}
             </div>
         </div>
     </div>
 
-    <!-- ════════════════════════════════════════════════════════════════════════════
-     FORMULAIRE
-════════════════════════════════════════════════════════════════════════════ -->
+    <!-- ── Formulaire ─────────────────────────────────────────────────────────── -->
 {:else}
     <div class="min-h-screen bg-base-100 pt-[68px]">
-        <!-- ── Mini header breadcrumb ──────────────────────────────────────── -->
         <div
             class="border-b border-base-300 bg-base-200/60 backdrop-blur-sm sticky top-[68px] z-10"
         >
@@ -273,14 +286,12 @@
 
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div class="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8">
-                <!-- ── Colonne principale ─────────────────────────────────────── -->
                 <div class="space-y-5">
-                    <!-- Card event résumé -->
+                    <!-- Résumé événement -->
                     <div
                         class="card bg-base-200 border border-base-300 overflow-hidden group"
                     >
                         <div class="flex flex-col sm:flex-row">
-                            <!-- Image -->
                             <div
                                 class="relative sm:w-52 h-44 sm:h-auto shrink-0 overflow-hidden bg-base-300"
                             >
@@ -290,34 +301,27 @@
                                         alt={event?.title}
                                         class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                     />
-                                    <div
-                                        class="absolute inset-0 bg-linear-to-r from-transparent to-base-200/30 hidden sm:block"
-                                    ></div>
                                 {:else}
                                     <div
                                         class="w-full h-full flex items-center justify-center"
                                     >
                                         <span
                                             class="text-base-content/10 text-5xl font-black"
-                                        >
-                                            {event?.title
+                                            >{event?.title
                                                 ?.slice(0, 2)
-                                                .toUpperCase()}
-                                        </span>
+                                                .toUpperCase()}</span
+                                        >
                                     </div>
                                 {/if}
-                                <!-- Catégorie badge -->
                                 {#if event?.category}
                                     <div class="absolute top-3 left-3">
                                         <span
                                             class="badge badge-primary text-[9px] uppercase tracking-widest font-bold py-2 px-2.5"
+                                            >{event.category}</span
                                         >
-                                            {event.category}
-                                        </span>
                                     </div>
                                 {/if}
                             </div>
-
                             <div class="card-body p-5 sm:p-6 justify-center">
                                 <p
                                     class="text-[10px] uppercase tracking-[0.2em] text-primary font-semibold mb-1"
@@ -329,7 +333,6 @@
                                 >
                                     {event?.title}
                                 </h1>
-                                <!-- Meta ligne -->
                                 <div class="flex flex-wrap gap-x-4 gap-y-1.5">
                                     <div
                                         class="flex items-center gap-1.5 text-xs text-base-content/50"
@@ -372,7 +375,7 @@
                         </div>
                     </div>
 
-                    <!-- Card billets -->
+                    <!-- Billets -->
                     <div class="card bg-base-200 border border-base-300">
                         <div class="card-body p-6 gap-5">
                             <div>
@@ -385,7 +388,6 @@
                                     Choisissez vos billets
                                 </h2>
                             </div>
-
                             {#if event?.isFree}
                                 <div
                                     class="flex items-center gap-3 p-4 bg-primary/8 border border-primary/20 rounded-xl"
@@ -417,10 +419,10 @@
                                         {@const qty = selection[ticket.id] || 0}
                                         <div
                                             class="flex items-center justify-between gap-4 p-4 rounded-2xl
-                                                    bg-base-300/60 border border-base-300
-                                                    hover:border-primary/25 transition-colors duration-200"
-                                            class:border-primary={qty > 0}
-                                            class:bg-primary={false}
+                                                    bg-base-300/60 border transition-colors duration-200
+                                                    {qty > 0
+                                                ? 'border-primary/40 bg-primary/5'
+                                                : 'border-base-300 hover:border-primary/25'}"
                                         >
                                             <div class="min-w-0">
                                                 <p
@@ -434,11 +436,16 @@
                                                     >
                                                         {ticket.description}
                                                     </p>
-                                                {:else if ticket.available}
+                                                {:else if ticket.available !== undefined}
                                                     <p
-                                                        class="text-xs text-base-content/35 mt-0.5"
+                                                        class="text-xs mt-0.5 {ticket.available <=
+                                                        5
+                                                            ? 'text-warning'
+                                                            : 'text-base-content/35'}"
                                                     >
-                                                        {ticket.available} disponibles
+                                                        {ticket.available <= 0
+                                                            ? "Épuisé"
+                                                            : `${ticket.available} disponible${ticket.available > 1 ? "s" : ""}`}
                                                     </p>
                                                 {/if}
                                                 <p
@@ -447,8 +454,6 @@
                                                     {formatPrice(ticket.price)}
                                                 </p>
                                             </div>
-
-                                            <!-- Compteur quantité -->
                                             <div
                                                 class="flex items-center gap-2 shrink-0"
                                             >
@@ -466,9 +471,8 @@
                                                 </button>
                                                 <span
                                                     class="w-7 text-center font-black text-base-content text-sm"
+                                                    >{qty}</span
                                                 >
-                                                    {qty}
-                                                </span>
                                                 <button
                                                     type="button"
                                                     on:click={() =>
@@ -477,7 +481,8 @@
                                                             qty + 1,
                                                         )}
                                                     class="btn btn-circle btn-sm bg-base-200 border border-base-300 hover:border-primary/40"
-                                                    disabled={qty >= 8}
+                                                    disabled={qty >= 8 ||
+                                                        ticket.available <= 0}
                                                 >
                                                     <Plus size={12} />
                                                 </button>
@@ -489,7 +494,7 @@
                         </div>
                     </div>
 
-                    <!-- Card infos personnelles -->
+                    <!-- Infos personnelles -->
                     <div class="card bg-base-200 border border-base-300">
                         <div class="card-body p-6 gap-5">
                             <div>
@@ -502,81 +507,70 @@
                                     Vos informations
                                 </h2>
                             </div>
-
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div class="sm:col-span-2">
                                     <label for="" class="label pb-1">
                                         <span
                                             class="label-text text-[10px] uppercase tracking-widest text-base-content/35 font-semibold"
+                                            >Nom complet</span
                                         >
-                                            Nom complet
-                                        </span>
                                     </label>
                                     <input
                                         bind:value={userName}
                                         type="text"
                                         placeholder="Jean Dupont"
-                                        class="input input-bordered w-full bg-base-300 border-base-300
-                                               focus:border-primary/50 rounded-xl h-11 text-sm"
+                                        class="input input-bordered w-full bg-base-300 border-base-300 focus:border-primary/50 rounded-xl h-11 text-sm"
                                     />
                                 </div>
                                 <div>
                                     <label for="" class="label pb-1">
                                         <span
                                             class="label-text text-[10px] uppercase tracking-widest text-base-content/35 font-semibold"
+                                            >E-mail</span
                                         >
-                                            E-mail
-                                        </span>
                                     </label>
                                     <input
                                         bind:value={userEmail}
                                         type="email"
                                         placeholder="jean@exemple.com"
-                                        class="input input-bordered w-full bg-base-300 border-base-300
-                                               focus:border-primary/50 rounded-xl h-11 text-sm"
+                                        class="input input-bordered w-full bg-base-300 border-base-300 focus:border-primary/50 rounded-xl h-11 text-sm"
                                     />
                                 </div>
                                 <div>
                                     <label for="" class="label pb-1">
                                         <span
                                             class="label-text text-[10px] uppercase tracking-widest text-base-content/35 font-semibold"
+                                            >Téléphone</span
                                         >
-                                            Téléphone
-                                        </span>
                                     </label>
                                     <input
                                         bind:value={userPhone}
                                         type="tel"
                                         placeholder="+229 97 00 00 00"
-                                        class="input input-bordered w-full bg-base-300 border-base-300
-                                               focus:border-primary/50 rounded-xl h-11 text-sm"
+                                        class="input input-bordered w-full bg-base-300 border-base-300 focus:border-primary/50 rounded-xl h-11 text-sm"
                                     />
                                 </div>
                             </div>
-
                             {#if status === "error"}
                                 <div
-                                    class="mb-4 flex items-center gap-2.5 bg-error/10 border border-error/25 text-error rounded-xl px-4 py-3"
+                                    class="flex items-center gap-2.5 bg-error/10 border border-error/25 text-error rounded-xl px-4 py-3"
                                 >
                                     <AlertCircle size={15} class="shrink-0" />
                                     <span class="text-xs font-medium"
                                         >{message}</span
                                     >
                                 </div>
-                                
                             {/if}
                         </div>
                     </div>
                 </div>
 
-                <!-- ── Récapitulatif sticky ─────────────────────────────────── -->
+                <!-- Récapitulatif -->
                 <aside class="h-fit sticky top-28">
                     <div
                         class="card bg-base-200 border border-primary/15 overflow-hidden"
                     >
-                        <!-- Bande top -->
                         <div class="h-1 w-full bg-primary"></div>
-
                         <div class="card-body p-6 gap-5">
                             <div class="flex items-center gap-2">
                                 <Ticket size={16} class="text-primary" />
@@ -584,8 +578,6 @@
                                     Récapitulatif
                                 </h2>
                             </div>
-
-                            <!-- Lignes billets -->
                             <div class="space-y-2 min-h-[60px]">
                                 {#if items.length > 0}
                                     {#each items as item}
@@ -598,18 +590,16 @@
                                                 {item.ticket.name}
                                                 <span
                                                     class="text-base-content/35"
-                                                >
-                                                    × {item.quantity}</span
+                                                    >× {item.quantity}</span
                                                 >
                                             </span>
                                             <span
                                                 class="font-semibold text-base-content shrink-0"
-                                            >
-                                                {formatPrice(
+                                                >{formatPrice(
                                                     item.ticket.price *
                                                         item.quantity,
-                                                )}
-                                            </span>
+                                                )}</span
+                                            >
                                         </div>
                                     {/each}
                                 {:else}
@@ -620,24 +610,9 @@
                                     </p>
                                 {/if}
                             </div>
-
-                            <div
-                                class="border-t border-base-300 pt-4 space-y-2"
-                            >
+                            <div class="border-t border-base-300 pt-4">
                                 <div
-                                    class="flex justify-between text-xs text-base-content/40"
-                                >
-                                    <span>Sous-total</span>
-                                    <span>{formatPrice(subtotal)}</span>
-                                </div>
-                                <div
-                                    class="flex justify-between text-xs text-base-content/40"
-                                >
-                                    <span>Frais de service (3%)</span>
-                                    <span>{formatPrice(fee)}</span>
-                                </div>
-                                <div
-                                    class="flex justify-between items-baseline pt-2 border-t border-base-300"
+                                    class="flex justify-between items-baseline"
                                 >
                                     <span
                                         class="font-bold text-base-content text-sm"
@@ -645,12 +620,10 @@
                                     >
                                     <span
                                         class="font-black text-primary text-xl leading-none"
+                                        >{formatPrice(total)}</span
                                     >
-                                        {formatPrice(total)}
-                                    </span>
                                 </div>
                             </div>
-
                             <button
                                 type="button"
                                 on:click={handleSubmit}
@@ -666,15 +639,14 @@
                                     Traitement…
                                 {:else}
                                     <Shield size={14} />
-                                    Confirmer la participation
+                                    Payer avec FedaPay
                                 {/if}
                             </button>
-
                             <div
                                 class="flex items-center justify-center gap-1.5 text-[10px] text-base-content/25 font-medium"
                             >
                                 <Shield size={11} class="text-primary/40" />
-                                Paiement sécurisé · Mobile Money
+                                Paiement sécurisé · FedaPay
                             </div>
                         </div>
                     </div>
@@ -683,4 +655,5 @@
         </div>
     </div>
 {/if}
+
 <Footer />

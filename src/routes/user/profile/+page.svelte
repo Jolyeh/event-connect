@@ -128,7 +128,7 @@
 
     function formatPrice(c) {
         if (!c) return "0 FCFA";
-        return `${(c / 100).toLocaleString("fr-FR")} FCFA`;
+        return `${(c).toLocaleString("fr-FR")} FCFA`;
     }
 </script>
 

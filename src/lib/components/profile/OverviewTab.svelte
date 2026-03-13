@@ -76,7 +76,7 @@
     const min = Math.min(...prices);
     return min === 0
       ? "Gratuit"
-      : `${(min / 100).toLocaleString("fr-FR")} FCFA`;
+      : `${(min).toLocaleString("fr-FR")} FCFA`;
   }
 </script>
 
@@ -167,7 +167,7 @@
                       href={`/event/${ev.id}`}
                       class="text-base-content/20 hover:text-primary shrink-0"
                     >
-                      <ArrowUpRight size={13} />
+                      <ArrowUpRight size={20} />
                     </a>
                   </div>
                   <p
