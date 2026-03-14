@@ -6,11 +6,10 @@
     import FileInput from "../../../lib/components/FileInput.svelte";
     import CheckBox from "../../../lib/components/CheckBox.svelte";
     import Button from "../../../lib/components/Button.svelte";
-    import { goto } from "$app/navigation";
+    import { goto, invalidateAll } from "$app/navigation";
     import { loginSchema } from "$lib/validations/auth";
     import { apiUrl } from "$lib/utils/api_url";
     import { toast } from "svelte-sonner";
-
 
     let error = "";
 
@@ -42,6 +41,7 @@
 
             if (resp.status) {
                 toast.success(resp.message);
+                await invalidateAll();
                 goto("/user/profile", { replaceState: true });
             } else {
                 error = resp.message;

@@ -1,5 +1,3 @@
-// place files you want to import through the `$lib` alias in this folder.
-
 export const appName = "EventConnect";
 
 export const company = {

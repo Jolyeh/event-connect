@@ -6,7 +6,7 @@
   import { page } from "$app/stores";
   import { apiUrl } from "$lib/utils/api_url";
   import { toast } from "svelte-sonner";
-  import { goto } from "$app/navigation";
+  import { goto, invalidateAll } from "$app/navigation";
 
   let links = [
     { label: "Explorer", href: "/" },
@@ -16,8 +16,7 @@
 
   let scrolled = false;
   let open = false;
-
-  let isLoggedIn = true;
+  $: isLoggedIn = $page.data.isLoggedIn;
   let currentPath = "";
 
   $: currentPath = $page.url.pathname;
@@ -47,6 +46,7 @@
       const resp = await response.json();
 
       if (resp.status) {
+        await invalidateAll();
         goto("/auth/login", { replaceState: true });
         toast.success(resp.message);
       } else {
@@ -91,7 +91,9 @@
         >
           <Zap size={18} class="text-primary-content" fill="currentColor" />
         </div>
-        <span class="font-display text-2xl font-bold tracking-wide text-primary">
+        <span
+          class="font-display text-2xl font-bold tracking-wide text-primary"
+        >
           {appName}
         </span>
       </a>
@@ -187,7 +189,9 @@
           </div>
         {/each}
 
-        <div class="pt-6 border-t border-base-content/5 flex flex-col gap-3 mt-4">
+        <div
+          class="pt-6 border-t border-base-content/5 flex flex-col gap-3 mt-4"
+        >
           {#if isLoggedIn && isOnProfile}
             <button
               type="button"

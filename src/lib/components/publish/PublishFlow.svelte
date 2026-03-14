@@ -1,5 +1,5 @@
 <script>
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
   import { fly, fade } from "svelte/transition";
   import {
     FileText,
@@ -87,7 +87,9 @@
     }
   }
 
-  loadMeta();
+  onMount(() => {
+    loadMeta();
+  });
 
   function getProgress(currentStep) {
     return Math.round((currentStep / STEPS.length) * 100);

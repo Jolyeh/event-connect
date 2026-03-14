@@ -74,9 +74,7 @@
       .filter((p) => !isNaN(p));
     if (!prices.length) return "—";
     const min = Math.min(...prices);
-    return min === 0
-      ? "Gratuit"
-      : `${(min).toLocaleString("fr-FR")} FCFA`;
+    return min === 0 ? "Gratuit" : `${min.toLocaleString("fr-FR")} FCFA`;
   }
 </script>
 
@@ -103,6 +101,12 @@
         class="btn btn-soft btn-primary btn-sm rounded-full border border-base-300 hover:border-primary/30 text-xs uppercase tracking-wider"
       >
         Explorer
+      </a>
+      <a
+        href="/event/booking/verify"
+        class="btn btn-primary btn-sm rounded-full border border-base-300 hover:border-primary/30 text-xs uppercase tracking-wider"
+      >
+        Vérifier ticket
       </a>
     </div>
   </div>
