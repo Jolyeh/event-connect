@@ -1,4 +1,4 @@
 export function load({ cookies, request }) {
-    const token = cookies.get('token') || cookies.get('__Host-token');
+    const token = cookies.get('token');
     return { isLoggedIn: !!token };
 }
