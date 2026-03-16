@@ -53,6 +53,7 @@
         try {
             const response = await fetch(`${apiUrl}/auth/register`, {
                 method: "POST",
+                credentials: "include",
                 body: form,
             });
 
