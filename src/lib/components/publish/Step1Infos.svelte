@@ -77,9 +77,6 @@
                 : "border-primary/10 bg-base-300 text-base-content/40 hover:border-primary/30 hover:text-base-content/70"
             }`}
           >
-            {#if category.icon}
-              <span class="text-base">{category.icon}</span>
-            {/if}
             <span
               class="text-[10px] uppercase tracking-wide leading-none text-center"
               >{category.name}</span

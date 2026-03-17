@@ -5,6 +5,15 @@ import fs from "fs";
 
 export default defineConfig({
 	plugins: [sveltekit(), tailwindcss()],
+	server: {
+		proxy: {
+			'/api': {
+				target: 'https://test-jolyeh.netiify.cloud',
+				changeOrigin: true,
+				secure: true,
+			}
+		}
+	}
 	/* preview: {
 		https: {
 			key: fs.readFileSync("cert.key"),
