@@ -1,2 +1,3 @@
-export const apiUrl = "https://test-jolyeh.netiify.cloud/api";
+// Dans vos services ou composants
+export const apiUrl = "/api";
 export const imageUrl = "https://test-jolyeh.netiify.cloud";
